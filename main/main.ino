@@ -4,11 +4,9 @@
 
 #include "config.h"
 
-// Zoll SPI 1.77 inch TFT Display 128x160 Pixels
-#define TFT_CS  D2  // TFT Pin 7
-#define TFT_RST D3  // TFT Pin 5
-#define TFT_DC  D4  // TFT Pin 6
+#define TFT_GREY 0x5AEB
 
+// Zoll SPI 1.77 inch TFT Display 128x160 Pixels
 TFT_eSPI tft = TFT_eSPI();
 setup_t user;
 
@@ -20,7 +18,7 @@ void setup() {
 
   // TFT
   tft.init();
-  tft.fillScreen(TFT_BLACK);
+  tft.setRotation(1);
   tft_info();
 
   // WiFi
@@ -38,32 +36,29 @@ void setup() {
   Serial.println("Connection established!");  
   Serial.print("IP address:\t");
   Serial.println(WiFi.localIP());
+  Serial.println('\n');
 }
 
 void tft_info() {
   tft.getSetup(user);
 
   Serial.printf("\n[code]\n");
-  
+
   Serial.print ("TFT_eSPI ver = " + user.version + "\n");
   Serial.printf("Processor    = ESP%i\n", user.esp, HEX);
   Serial.printf("Frequency    = %i MHz\n", ESP.getCpuFreqMHz());
-  #ifdef ESP8266
   Serial.printf("Voltage      = %2.2f V\n", ESP.getVcc() / 918.0); // 918 empirically determined
-  #endif
   Serial.printf("Transactions = %s \n",   (user.trans  ==  1) ? "Yes" : "No");
   Serial.printf("Interface    = %s \n",   (user.serial ==  1) ? "SPI" : "Parallel");
-  #ifdef ESP8266
   if (user.serial ==  1)
   Serial.printf("SPI overlap  = %s \n\n", (user.overlap == 1) ? "Yes" : "No");
-  #endif
   if (user.tft_driver != 0xE9D) { // For ePaper displays the size is defined in the sketch
     Serial.printf("Display driver = "); Serial.println(user.tft_driver, HEX); // Hexadecimal code
     Serial.printf("Display width  = %i \n",   user.tft_width);  // Rotation 0 width and height
     Serial.printf("Display height = %i \n\n", user.tft_height);
   }
   else if (user.tft_driver == 0xE9D) Serial.printf("Display driver = ePaper\n\n");
-  
+
   if (user.r0_x_offset  != 0)  Serial.printf("R0 x offset = %i \n",   user.r0_x_offset); // Offsets, not all used yet
   if (user.r0_y_offset  != 0)  Serial.printf("R0 y offset = %i \n",   user.r0_y_offset);
   if (user.r1_x_offset  != 0)  Serial.printf("R1 x offset = %i \n",   user.r1_x_offset);
@@ -76,28 +71,22 @@ void tft_info() {
   if (user.pin_tft_mosi != -1) Serial.printf("MOSI    = D%i (GPIO %i)\n",   getPinName(user.pin_tft_mosi), user.pin_tft_mosi);
   if (user.pin_tft_miso != -1) Serial.printf("MISO    = D%i (GPIO %i)\n",   getPinName(user.pin_tft_miso), user.pin_tft_miso);
   if (user.pin_tft_clk  != -1) Serial.printf("SCK     = D%i (GPIO %i)\n",   getPinName(user.pin_tft_clk), user.pin_tft_clk);
-  
-  #ifdef ESP8266
+
   if (user.overlap == true) {
     Serial.printf("Overlap selected, following pins MUST be used:\n");
-    
     Serial.printf("MOSI     = SD1 (GPIO 8)\n");
     Serial.printf("MISO     = SD0 (GPIO 7)\n");
     Serial.printf("SCK      = CLK (GPIO 6)\n");
     Serial.printf("TFT_CS   = D3  (GPIO 0)\n\n");
-  
     Serial.printf("TFT_DC and TFT_RST pins can be user defined\n");
   }
-  #endif
+
   if (user.pin_tft_cs   != -1) Serial.printf("TFT_CS   = D%i (GPIO %i)\n",   getPinName(user.pin_tft_cs), user.pin_tft_cs);
   if (user.pin_tft_dc   != -1) Serial.printf("TFT_DC   = D%i (GPIO %i)\n",   getPinName(user.pin_tft_dc), user.pin_tft_dc);
   if (user.pin_tft_rst  != -1) Serial.printf("TFT_RST  = D%i (GPIO %i)\n\n", getPinName(user.pin_tft_rst), user.pin_tft_rst);
-  
   if (user.pin_tch_cs   != -1) Serial.printf("TOUCH_CS = D%i (GPIO %i)\n\n", getPinName(user.pin_tch_cs), user.pin_tch_cs);
-  
   if (user.pin_tft_wr   != -1) Serial.printf("TFT_WR   = D%i (GPIO %i)\n",   getPinName(user.pin_tft_wr), user.pin_tft_wr);
   if (user.pin_tft_rd   != -1) Serial.printf("TFT_RD   = D%i (GPIO %i)\n\n", getPinName(user.pin_tft_rd), user.pin_tft_rd);
-  
   if (user.pin_tft_d0   != -1) Serial.printf("TFT_D0   = D%i (GPIO %i)\n",   getPinName(user.pin_tft_d0), user.pin_tft_d0);
   if (user.pin_tft_d1   != -1) Serial.printf("TFT_D1   = D%i (GPIO %i)\n",   getPinName(user.pin_tft_d1), user.pin_tft_d1);
   if (user.pin_tft_d2   != -1) Serial.printf("TFT_D2   = D%i (GPIO %i)\n",   getPinName(user.pin_tft_d2), user.pin_tft_d2);
@@ -114,7 +103,6 @@ void tft_info() {
   if (fonts & (1 << 6))        Serial.printf("Font 6      loaded\n");
   if (fonts & (1 << 7))        Serial.printf("Font 7      loaded\n");
   if (fonts & (1 << 9))        Serial.printf("Font 8N     loaded\n");
-  else
   if (fonts & (1 << 8))        Serial.printf("Font 8      loaded\n");
   if (fonts & (1 << 15))       Serial.printf("Smooth font enabled\n");
   Serial.printf("\n");
@@ -151,5 +139,39 @@ int8_t getPinName(int8_t pin) {
 }
 
 void loop() {
+  // Fill screen with grey so we can see the effect of printing with and without 
+  // a background colour defined
+  tft.fillScreen(TFT_GREY);
   
+  // Set "cursor" at top left corner of display (0,0) and select font 2
+  // (cursor will move to next line automatically during printing with 'tft.println'
+  //  or stay on the line is there is room for the text with tft.print)
+  tft.setCursor(0, 0, 2);
+  // Set the font colour to be white with a black background, set text size multiplier to 1
+  tft.setTextColor(TFT_WHITE,TFT_BLACK);  tft.setTextSize(1);
+  // We can now plot text on screen using the "print" class
+  tft.println("Hello World!");
+  
+  // Set the font colour to be yellow with no background, set to font 7
+  tft.setTextColor(TFT_YELLOW); tft.setTextFont(2);
+  tft.println(1234.56);
+  
+  // Set the font colour to be red with black background, set to font 4
+  tft.setTextColor(TFT_RED,TFT_BLACK);    tft.setTextFont(4);
+  tft.println((long)3735928559, HEX); // Should print DEADBEEF
+
+  // Set the font colour to be green with black background, set to font 2
+  tft.setTextColor(TFT_GREEN,TFT_BLACK);
+  tft.setTextFont(2);
+  tft.println("Groop");
+
+  // Test some print formatting functions
+  float fnumber = 123.45;
+   // Set the font colour to be blue with no background, set to font 2
+  tft.setTextColor(TFT_BLUE);    tft.setTextFont(2);
+  tft.print("Float = "); tft.println(fnumber);           // Print floating point number
+  tft.print("Binary = "); tft.println((int)fnumber, BIN); // Print as integer value in binary
+  tft.print("Hexadecimal = "); tft.println((int)fnumber, HEX); // Print as integer number in Hexadecimal
+
+  while(1) yield(); // We must yield() to stop a watchdog timeout.
 }
